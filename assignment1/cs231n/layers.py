@@ -28,6 +28,9 @@ def affine_forward(x, w, b):
     # will need to reshape the input into rows.                               #
     ###########################################################################
 
+    x_flat = x.reshape((x.shape[0], -1))
+    out = x_flat @ w + b
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -52,10 +55,17 @@ def affine_backward(dout, cache):
     - db: Gradient with respect to b, of shape (M,)
     """
     x, w, b = cache
+    x_flat = x.reshape(x.shape[0], -1)
     dx, dw, db = None, None, None
     ###########################################################################
     # TODO: Implement the affine backward pass.                               #
     ###########################################################################
+    
+    dx = dout @ w.T
+    dw = x_flat.T @ dout
+    db = np.sum(dout, axis=0)
+    dx = dx.reshape(x.shape)
+
 
     ###########################################################################
     #                             END OF YOUR CODE                            #
@@ -79,6 +89,8 @@ def relu_forward(x):
     # TODO: Implement the ReLU forward pass.                                  #
     ###########################################################################
 
+    out = np.maximum(0, x)
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -101,6 +113,8 @@ def relu_backward(dout, cache):
     ###########################################################################
     # TODO: Implement the ReLU backward pass.                                 #
     ###########################################################################
+
+    dx = dout * (x > 0)
 
     ###########################################################################
     #                             END OF YOUR CODE                            #
@@ -714,8 +728,32 @@ def softmax_loss(x, y):
     ###########################################################################
     # TODO: Copy over your solution from A1.
     ###########################################################################
+    N = x.shape[0]
 
+    # 1️⃣ Compute scores
+    # scores = X.dot(W)   
+
+    # 2️⃣ Numerical stability trick
+    scores = x - np.max(x, axis=1, keepdims=True)
+
+    # 3️⃣ Softmax probabilities
+    exp_scores = np.exp(scores)             # (N, C)
+    probs = exp_scores / np.sum(exp_scores, axis=1, keepdims=True)  # (N, C)
+
+    # 4️⃣ Loss: average cross-entropy loss + regularization
+    correct_logprobs = -np.log(probs[np.arange(N), y])
+    loss = np.sum(correct_logprobs) / N
+    # loss += reg * np.sum(W * W)   # L2 regularization
+
+    # 5️⃣ Gradient calculation
+    dprobs = probs.copy()
+    dprobs[np.arange(N), y] -= 1     # subtract 1 for correct classes
+           # (D, N) dot (N, C) → (D, C)
+
+    # 6️⃣ Add regularization gradient
+    # dW += 2 * reg * W
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
+    dx = dprobs / N
     return loss, dx
